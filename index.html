@@ -218,11 +218,13 @@ let dekSearch = '';
 let showAll = false;
 let loadedCariId = null; // hangi carinin dekontları yüklü
 
+const BASE = location.hostname.includes('github.io') ? '/caripro-pwa' : '';
+
 async function fetchJSON(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   try {
-    const r = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    const r = await fetch(BASE + url, { cache: 'no-store', signal: controller.signal });
     clearTimeout(timeout);
     if (r.ok) return await r.json();
   } catch(e) { clearTimeout(timeout); console.warn('fetch fail', url, e.message); }
