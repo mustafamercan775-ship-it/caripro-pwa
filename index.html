@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CariPro">
+<title>CariPro</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --surface3: #2e2e2e;
+    --border: #2a2a2a;
+    --text: #f0ede8;
+    --text2: #9a9590;
+    --text3: #5a5550;
+    --accent: #c9a84c;
+    --red: #e05a5a;
+    --green: #4caf7d;
+    --mono: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, 'Helvetica Neue', sans-serif; overflow: hidden; }
+
+  /* HEADER */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 10px;
+    padding-top: calc(14px + env(safe-area-inset-top));
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-logo { display: flex; align-items: center; gap: 8px; }
+  .logo-mark {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent), #8a6830);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: #0f0f0f;
+  }
+  .logo-text { font-size: 17px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--accent); }
+  .sync-btn {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text2);
+    padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .sync-btn.loading { color: var(--accent); }
+  .sync-btn.error { color: var(--red); }
+
+  /* VIEWS */
+  .view { display: none; height: calc(100vh - 56px - env(safe-area-inset-top)); overflow-y: auto; }
+  .view.active { display: block; }
+
+  /* CARI LIST */
+  .search-bar { padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; }
+  .search-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 14px; color: var(--text); font-size: 15px;
+    outline: none;
+  }
+  .search-input::placeholder { color: var(--text3); }
+
+  .cari-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.15s;
+    gap: 12px;
+  }
+  .cari-item:active { background: var(--surface2); }
+  .cari-left { flex: 1; min-width: 0; }
+  .cari-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cari-kod { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .cari-balance { font-size: 14px; font-weight: 700; font-family: var(--mono); white-space: nowrap; }
+  .cari-balance.borc { color: var(--red); }
+  .cari-balance.alacak { color: var(--green); }
+  .cari-balance.sifir { color: var(--text3); }
+  .chevron { color: var(--text3); font-size: 12px; }
+
+  /* EMPTY / LOADING */
+  .empty { text-align: center; padding: 60px 24px; color: var(--text3); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; }
+  .empty-sub { font-size: 13px; margin-top: 6px; }
+
+  /* DETAIL VIEW */
+  .detail-header {
+    padding: 14px 16px 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .back-btn {
+    background: none; border: none; color: var(--accent);
+    font-size: 16px; padding: 4px 0; cursor: pointer; display: flex; align-items: center; gap: 4px;
+  }
+  .detail-title { font-size: 16px; font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .stats-strip {
+    display: flex; background: var(--surface); border-bottom: 1px solid var(--border);
+    position: sticky; top: 52px; z-index: 40;
+  }
+  .stat-chip { flex: 1; padding: 8px 6px; text-align: center; border-right: 1px solid var(--border); }
+  .stat-chip:last-child { border-right: none; }
+  .stat-chip-label { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; }
+  .stat-chip-val { font-size: 12px; font-weight: 700; font-family: var(--mono); margin-top: 2px; }
+  .stat-chip-val.borc { color: var(--red); }
+  .stat-chip-val.alacak { color: var(--green); }
+
+  /* FILTER TABS */
+  .filter-tabs {
+    display: flex; overflow-x: auto; gap: 6px; padding: 8px 12px;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    position: sticky; top: 96px; z-index: 40;
+    scrollbar-width: none;
+  }
+  .filter-tabs::-webkit-scrollbar { display: none; }
+  .ftab {
+    flex-shrink: 0; padding: 5px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text2);
+    transition: all 0.15s;
+  }
+  .ftab.active { background: var(--accent); color: #0f0f0f; border-color: var(--accent); }
+
+  /* DEK SEARCH */
+  .dek-search-wrap { padding: 8px 12px; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .dek-search { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; color: var(--text); font-size: 14px; outline: none; }
+
+  /* DEKONT ROWS */
+  .dek-row {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: grid; grid-template-columns: 1fr auto; gap: 4px;
+  }
+  .dek-row:active { background: var(--surface2); }
+  .dek-no { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .dek-aciklama { font-size: 14px; color: var(--text); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dek-tarih { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .dek-right { text-align: right; }
+  .dek-tutar { font-size: 14px; font-weight: 700; font-family: var(--mono); }
+  .dek-tutar.borc { color: var(--red); }
+  .dek-tutar.tahsilat { color: var(--green); }
+  .dek-tutar.alacak { color: var(--green); }
+  .dek-tutar.odeme { color: var(--red); }
+  .dek-bakiye { font-size: 11px; color: var(--text3); margin-top: 4px; font-family: var(--mono); }
+  .dek-tur-badge {
+    display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px;
+    font-weight: 600; margin-top: 4px;
+  }
+  .dek-tur-badge.borc { background: rgba(224,90,90,0.15); color: var(--red); }
+  .dek-tur-badge.tahsilat { background: rgba(76,175,125,0.15); color: var(--green); }
+  .dek-tur-badge.alacak { background: rgba(76,175,125,0.15); color: var(--green); }
+  .dek-tur-badge.odeme { background: rgba(224,90,90,0.15); color: var(--red); }
+
+  .show-more-btn {
+    width: 100%; padding: 14px; text-align: center;
+    background: none; border: none; border-bottom: 1px solid var(--border);
+    color: var(--accent); font-size: 14px; cursor: pointer;
+  }
+
+  .son-guncelleme { text-align: center; padding: 16px; font-size: 11px; color: var(--text3); }
+
+  /* SPINNER */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">
+    <div class="logo-mark">C</div>
+    <div class="logo-text">Cari<span>Pro</span></div>
+  </div>
+  <button class="sync-btn" id="syncBtn" onclick="loadData()">
+    <span id="syncIcon">↻</span> Yenile
+  </button>
+</div>
+
+<!-- CARİ LİSTESİ -->
+<div class="view active" id="viewList">
+  <div class="search-bar">
+    <input class="search-input" id="searchInput" placeholder="🔍 Cari ara..." oninput="filterCari(this.value)">
+  </div>
+  <div id="cariList"></div>
+</div>
+
+<!-- DEKont LİSTESİ -->
+<div class="view" id="viewDetail">
+  <div class="detail-header">
+    <button class="back-btn" onclick="goBack()">‹ Geri</button>
+    <div class="detail-title" id="detailTitle">—</div>
+  </div>
+  <div class="stats-strip" id="statsStrip"></div>
+  <div class="filter-tabs" id="filterTabs"></div>
+  <div class="dek-search-wrap">
+    <input class="dek-search" id="dekSearch" placeholder="Açıklama, dekont no ara..." oninput="filterDekont(this.value)">
+  </div>
+  <div id="dekontList"></div>
+</div>
+
+<script>
+const CACHE_KEY = 'caripro_data';
+
+let db = { cariler: [], dekontlar: [] };
+let cariIndex = {};
+let aktivCari = null;
+let dekFilter = 'hepsi';
+let dekSearch = '';
+let showAll = false;
+let loadedCariId = null; // hangi carinin dekontları yüklü
+
+async function fetchJSON(url) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const r = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    clearTimeout(timeout);
+    if (r.ok) return await r.json();
+  } catch(e) { clearTimeout(timeout); console.warn('fetch fail', url, e.message); }
+  return null;
+}
+
+// ─── UTILS ───
+function fmt(n) {
+  return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + ' TL';
+}
+function trNorm(s) {
+  return String(s||'').replace(/İ/g,'i').replace(/I/g,'i').replace(/Ğ/g,'g').replace(/Ü/g,'u').replace(/Ş/g,'s').replace(/Ö/g,'o').replace(/Ç/g,'c').toLowerCase();
+}
+function tarihFmt(t) {
+  if (!t) return '';
+  const p = t.split('-');
+  return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : t;
+}
+
+// ─── DATA LOAD ───
+async function loadData() {
+  const btn = document.getElementById('syncBtn');
+  const icon = document.getElementById('syncIcon');
+  btn.className = 'sync-btn loading';
+  icon.innerHTML = '<span class="spinner"></span>';
+  document.getElementById('cariList').innerHTML = `
+    <div class="empty">
+      <div class="empty-icon"><span class="spinner" style="width:32px;height:32px;border-width:3px"></span></div>
+      <div class="empty-text" style="margin-top:16px">Cariler yükleniyor...</div>
+    </div>`;
+
+  const cariler = await fetchJSON('/d/cariler.json');
+  if (!cariler) {
+    btn.className = 'sync-btn error';
+    icon.textContent = '✕';
+    document.getElementById('cariList').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">📡</div>
+        <div class="empty-text">Veri yüklenemedi</div>
+        <div class="empty-sub">Yenile butonuna basın</div>
+      </div>`;
+    return;
+  }
+
+  db.cariler = cariler;
+  btn.className = 'sync-btn';
+  icon.textContent = '↻';
+  renderCariList();
+}
+
+// ─── INDEX ───
+function buildDekontIndex(cariId, dekontlar) {
+  cariIndex[cariId] = { dekontlar: dekontlar };
+}
+
+// ─── CARİ LIST ───
+function cariStats(c) {
+  // Bakiye cariler.json'dan geliyor
+  return { bakiye: c.bakiye || 0, sayi: c.sayi || 0 };
+}
+
+function renderCariList(filter = '') {
+  const list = document.getElementById('cariList');
+  if (!db) return;
+  const q = trNorm(filter);
+  let cariler = (db.cariler||[]).filter(c =>
+    trNorm(c.ad).includes(q) || trNorm(c.kod||'').includes(q)
+  ).sort((a, b) => {
+    const an = parseInt((a.kod||'').replace(/\D/g,''))||0;
+    const bn = parseInt((b.kod||'').replace(/\D/g,''))||0;
+    return an - bn;
+  });
+
+  if (!cariler.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Sonuç bulunamadı</div></div>`;
+    return;
+  }
+
+  const cacheTime = localStorage.getItem(CACHE_KEY + '_time');
+  const timeStr = cacheTime ? new Date(cacheTime).toLocaleString('tr-TR') : '—';
+
+  list.innerHTML = cariler.map(c => {
+    const s = cariStats(c);
+    const bakCls = s.bakiye > 0 ? 'borc' : s.bakiye < 0 ? 'alacak' : 'sifir';
+    const bakTxt = s.bakiye === 0 ? 'Sıfır' : fmt(Math.abs(s.bakiye));
+    return `<div class="cari-item" onclick="openCari('${c.id}')">
+      <div class="cari-left">
+        <div class="cari-name">${c.ad}</div>
+        <div class="cari-kod">${c.kod||''}</div>
+      </div>
+      <div class="cari-balance ${bakCls}">${bakTxt}</div>
+      <div class="chevron">›</div>
+    </div>`;
+  }).join('') + `<div class="son-guncelleme">Son güncelleme: ${timeStr}</div>`;
+}
+
+function filterCari(val) { renderCariList(val); }
+
+// ─── CARİ DETAIL ───
+async function openCari(id) {
+  aktivCari = (db.cariler||[]).find(c => c.id === id);
+  if (!aktivCari) return;
+  dekFilter = 'hepsi';
+  dekSearch = '';
+  showAll = false;
+  document.getElementById('detailTitle').textContent = aktivCari.ad;
+  document.getElementById('viewList').classList.remove('active');
+  document.getElementById('viewDetail').classList.add('active');
+  document.getElementById('viewDetail').scrollTop = 0;
+  document.getElementById('dekSearch').value = '';
+
+  // Stats şimdilik cariler.json'daki verilerle
+  renderStatsSimple();
+  renderFilterTabs();
+
+  // Dekontlar yüklü mü?
+  if (!cariIndex[id]) {
+    document.getElementById('dekontList').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon"><span class="spinner" style="width:24px;height:24px;border-width:2px"></span></div>
+        <div class="empty-text" style="margin-top:12px">Dekontlar yükleniyor...</div>
+      </div>`;
+    const deks = await fetchJSON(`/d/${id}.json`);
+    if (deks) {
+      buildDekontIndex(id, deks);
+    } else {
+      document.getElementById('dekontList').innerHTML = `
+        <div class="empty"><div class="empty-icon">⚠</div><div class="empty-text">Dekontlar yüklenemedi</div></div>`;
+      return;
+    }
+  }
+
+  renderStats();
+  renderDekontlar();
+}
+
+function goBack() {
+  document.getElementById('viewDetail').classList.remove('active');
+  document.getElementById('viewList').classList.add('active');
+}
+
+function renderStatsSimple() {
+  const bakiye = aktivCari.bakiye || 0;
+  const bakCls = bakiye > 0 ? 'borc' : bakiye < 0 ? 'alacak' : '';
+  const bakTxt = bakiye === 0 ? 'Sıfır' : (bakiye > 0 ? '' : '−') + fmt(Math.abs(bakiye));
+  document.getElementById('statsStrip').innerHTML = `
+    <div class="stat-chip">
+      <div class="stat-chip-label">Bakiye</div>
+      <div class="stat-chip-val ${bakCls}">${bakTxt}</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">İşlem</div>
+      <div class="stat-chip-val">${aktivCari.sayi || 0}</div>
+    </div>`;
+}
+
+function renderStats() {
+  const deks = cariIndex[aktivCari.id]?.dekontlar || [];
+  let toplamBorc = 0, toplamAlacak = 0, bakiye = 0;
+  deks.forEach(d => {
+    if (d.tur==='borc')      { toplamBorc += d.tutar; bakiye += d.tutar; }
+    else if (d.tur==='tahsilat') { toplamBorc -= d.tutar; bakiye -= d.tutar; }
+    else if (d.tur==='alacak')   { toplamAlacak += d.tutar; bakiye -= d.tutar; }
+    else if (d.tur==='odeme')    { toplamAlacak -= d.tutar; bakiye += d.tutar; }
+  });
+  const bakCls = bakiye > 0 ? 'borc' : bakiye < 0 ? 'alacak' : '';
+  const bakTxt = bakiye === 0 ? 'Sıfır' : (bakiye > 0 ? '' : '−') + fmt(Math.abs(bakiye));
+  document.getElementById('statsStrip').innerHTML = `
+    <div class="stat-chip">
+      <div class="stat-chip-label">Borç</div>
+      <div class="stat-chip-val borc">${fmt(toplamBorc)}</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">Alacak</div>
+      <div class="stat-chip-val alacak">${fmt(toplamAlacak)}</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">Bakiye</div>
+      <div class="stat-chip-val ${bakCls}">${bakTxt}</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">İşlem</div>
+      <div class="stat-chip-val">${deks.length}</div>
+    </div>`;
+}
+
+function renderFilterTabs() {
+  const tabs = [
+    { key: 'hepsi', label: 'Tümü' },
+    { key: 'borc', label: 'Borç' },
+    { key: 'tahsilat', label: 'Tahsilat' },
+    { key: 'alacak', label: 'Alacak' },
+    { key: 'odeme', label: 'Ödeme' },
+  ];
+  document.getElementById('filterTabs').innerHTML = tabs.map(t =>
+    `<div class="ftab ${dekFilter === t.key ? 'active' : ''}" onclick="setFilter('${t.key}')">${t.label}</div>`
+  ).join('');
+}
+
+function setFilter(f) { dekFilter = f; showAll = false; renderFilterTabs(); renderDekontlar(); }
+function filterDekont(v) { dekSearch = v; showAll = false; renderDekontlar(); }
+
+function renderDekontlar() {
+  const list = document.getElementById('dekontList');
+  let deks = (cariIndex[aktivCari.id]?.dekontlar || []).slice();
+
+  // 6 ay limiti
+  const altıAyOnce = new Date();
+  altıAyOnce.setMonth(altıAyOnce.getMonth() - 6);
+  const limitStr = altıAyOnce.toISOString().split('T')[0];
+  const tumSayi = deks.length;
+  let gizli = 0;
+  if (!showAll && !dekSearch && tumSayi > 200) {
+    const eskiler = deks.filter(d => d.tarih < limitStr);
+    gizli = eskiler.length;
+    deks = deks.filter(d => d.tarih >= limitStr);
+  }
+
+  if (dekFilter !== 'hepsi') deks = deks.filter(d => d.tur === dekFilter);
+
+  if (dekSearch.trim()) {
+    const q = trNorm(dekSearch.trim());
+    deks = deks.filter(d =>
+      trNorm(d.aciklama).includes(q) ||
+      trNorm(d.no||'').includes(q) ||
+      String(d.tutar).includes(dekSearch.trim())
+    );
+  }
+
+  deks.sort((a, b) => {
+    const td = new Date(a.tarih) - new Date(b.tarih);
+    if (td !== 0) return td;
+    return (parseInt((a.no||'').replace(/\D/g,''))||0) - (parseInt((b.no||'').replace(/\D/g,''))||0);
+  });
+
+  // Kümülatif bakiye — index'teki sıralı listeden
+  let allDeks = (cariIndex[aktivCari.id]?.dekontlar || [])
+    .slice().sort((a,b) => new Date(a.tarih)-new Date(b.tarih));
+  let balMap = {}, run = 0;
+  allDeks.forEach(d => {
+    if (d.tur==='borc') run+=d.tutar;
+    else if (d.tur==='tahsilat') run-=d.tutar;
+    else if (d.tur==='alacak') run-=d.tutar;
+    else if (d.tur==='odeme') run+=d.tutar;
+    balMap[d.id] = run;
+  });
+
+  const turLabel = { borc:'Borç', tahsilat:'Tahsilat', alacak:'Alacak', odeme:'Ödeme' };
+  const tutarSign = { borc:'', tahsilat:'−', alacak:'', odeme:'−' };
+
+  if (!deks.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">İşlem bulunamadı</div></div>`;
+    return;
+  }
+
+  const showMoreBtn = gizli > 0 && !showAll ? `
+    <button class="show-more-btn" onclick="showAllDeks()">⏫ ${gizli} eski kayıt — Tümünü Göster</button>` : '';
+
+  list.innerHTML = showMoreBtn + deks.map(d => {
+    const bal = balMap[d.id];
+    const balTxt = bal === 0 ? '0,00 TL' : (bal > 0 ? '+' : '−') + fmt(Math.abs(bal));
+    return `<div class="dek-row">
+      <div>
+        <div class="dek-no">${d.no||'—'}</div>
+        <div class="dek-aciklama">${d.aciklama||'—'}</div>
+        <div class="dek-tarih">${tarihFmt(d.tarih)}${d.saat?' · '+d.saat:''}</div>
+        <span class="dek-tur-badge ${d.tur}">${turLabel[d.tur]||d.tur}</span>
+      </div>
+      <div class="dek-right">
+        <div class="dek-tutar ${d.tur}">${tutarSign[d.tur]||''}${fmt(d.tutar)}</div>
+        <div class="dek-bakiye">${balTxt}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // En alta scroll
+  setTimeout(() => {
+    const detail = document.getElementById('viewDetail');
+    detail.scrollTop = detail.scrollHeight;
+  }, 100);
+}
+
+function showAllDeks() { showAll = true; renderDekontlar(); }
+
+// ─── INIT ───
+window.addEventListener('load', () => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+  loadData();
+});</script>
+</body>
+</html>
