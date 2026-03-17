@@ -1,4 +1,4 @@
-const CACHE = 'caripro-v9';
+const CACHE = 'caripro-202603171036';
 const ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', e => {
