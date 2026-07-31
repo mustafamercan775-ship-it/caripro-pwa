@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="CariPro">
+<meta name="theme-color" content="#ffffff">
+<title>CariPro</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #f2f5f8;
+    --surface: #ffffff;
+    --surface2: #f7f9fc;
+    --surface3: #eaf0f7;
+    --border: #d9e2ec;
+    --text: #172033;
+    --text2: #526173;
+    --text3: #8290a2;
+    --accent: #2f6fb2;
+    --red: #c2414b;
+    --green: #168455;
+    --mono: 'Cascadia Mono', 'SF Mono', 'Consolas', monospace;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, 'Helvetica Neue', sans-serif; overflow: hidden; }
+
+  /* HEADER */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 10px;
+    padding-top: calc(14px + env(safe-area-inset-top));
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 12px rgba(35, 75, 120, 0.07);
+  }
+  .header-logo { display: flex; align-items: center; gap: 8px; }
+  .logo-mark {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: linear-gradient(135deg, #4c8bc9, #22558c);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: #ffffff;
+  }
+  .logo-text { font-size: 17px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--accent); }
+  .sync-btn {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text2);
+    padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .sync-btn.loading { color: var(--accent); }
+  .sync-btn.error { color: var(--red); }
+
+  /* VIEWS */
+  .view { display: none; height: calc(100dvh - 56px - env(safe-area-inset-top)); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  @supports not (height: 100dvh) {
+    .view { height: calc(100vh - 56px - env(safe-area-inset-top)); }
+  }
+  .view.active { display: block; }
+
+  /* CARI LIST */
+  .search-bar { padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; }
+  .search-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 14px; color: var(--text); font-size: 15px;
+    outline: none;
+  }
+  .search-input::placeholder { color: var(--text3); }
+
+  .cari-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.15s;
+    gap: 12px;
+  }
+  .cari-item:active { background: var(--surface2); }
+  .cari-left { flex: 1; min-width: 0; }
+  .cari-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cari-kod { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .cari-balance { font-size: 14px; font-weight: 700; font-family: var(--mono); white-space: nowrap; }
+  .cari-balance.borc { color: var(--red); }
+  .cari-balance.alacak { color: var(--green); }
+  .cari-balance.sifir { color: var(--text3); }
+  .chevron { color: var(--text3); font-size: 12px; }
+
+  /* EMPTY / LOADING */
+  .empty { text-align: center; padding: 60px 24px; color: var(--text3); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; }
+  .empty-sub { font-size: 13px; margin-top: 6px; }
+
+  /* DETAIL VIEW */
+  .detail-header {
+    padding: 14px 16px 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .back-btn {
+    background: none; border: none; color: var(--accent);
+    font-size: 16px; padding: 4px 0; cursor: pointer; display: flex; align-items: center; gap: 4px;
+  }
+  .detail-title { font-size: 16px; font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .detail-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .detail-action {
+    min-height: 34px; padding: 6px 9px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface2); color: var(--text2);
+    font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+  .detail-action.accent { border-color: rgba(47,111,178,.45); color: var(--accent); background: #edf4fb; }
+
+  .stats-strip {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    position: sticky; top: 52px; z-index: 40;
+  }
+  .stat-chip { min-width: 0; padding: 9px 6px; text-align: center; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .stat-chip:nth-child(2n) { border-right: none; }
+  .stat-chip:nth-last-child(-n+2) { border-bottom: none; }
+  .stat-chip-label { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; }
+  .stat-chip-val { font-size: 12px; font-weight: 700; font-family: var(--mono); margin-top: 2px; white-space: nowrap; }
+  .stat-chip-val.borc { color: var(--red); }
+  .stat-chip-val.alacak { color: var(--green); }
+
+  /* FILTER TABS */
+  .filter-tabs {
+    display: flex; overflow-x: auto; gap: 6px; padding: 8px 12px;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    position: sticky; top: 135px; z-index: 40;
+    scrollbar-width: none;
+  }
+  .filter-tabs::-webkit-scrollbar { display: none; }
+  .ftab {
+    flex-shrink: 0; padding: 5px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text2);
+    transition: all 0.15s;
+  }
+  .ftab.active { background: var(--accent); color: #ffffff; border-color: var(--accent); box-shadow: 0 2px 7px rgba(47,111,178,.22); }
+
+  /* DEK SEARCH */
+  .dek-search-wrap { padding: 8px 12px; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .dek-search { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; color: var(--text); font-size: 14px; outline: none; }
+  #dekontList { padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+
+  /* DEKONT ROWS */
+  .dek-row {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(126px, 42%); gap: 10px;
+  }
+  .dek-row:active { background: var(--surface2); }
+  .dek-no { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .dek-aciklama { font-size: 14px; color: var(--text); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dek-tarih { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .dek-right { min-width: 0; width: 100%; text-align: right; overflow: visible; }
+  .dek-tutar { font-size: clamp(12px, 3.6vw, 14px); font-weight: 700; font-family: var(--mono); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .dek-tutar.borc { color: var(--red); }
+  .dek-tutar.tahsilat { color: var(--green); }
+  .dek-tutar.alacak { color: var(--green); }
+  .dek-tutar.odeme { color: var(--red); }
+  .dek-bakiye { font-size: clamp(10px, 3vw, 11px); color: var(--text2); margin-top: 4px; font-family: var(--mono); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .dek-tur-badge {
+    display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px;
+    font-weight: 600; margin-top: 4px;
+  }
+  .dek-tur-badge.borc { background: rgba(194,65,75,0.10); color: var(--red); }
+  .dek-tur-badge.tahsilat { background: rgba(22,132,85,0.11); color: var(--green); }
+  .dek-tur-badge.alacak { background: rgba(22,132,85,0.11); color: var(--green); }
+  .dek-tur-badge.odeme { background: rgba(194,65,75,0.10); color: var(--red); }
+
+  .show-more-btn {
+    width: 100%; padding: 14px; text-align: center;
+    background: none; border: none; border-bottom: 1px solid var(--border);
+    color: var(--accent); font-size: 14px; cursor: pointer;
+  }
+
+  .son-guncelleme { text-align: center; padding: 16px; font-size: 11px; color: var(--text3); }
+
+  /* PRIVATE LOGIN */
+  .auth-gate {
+    position: fixed; inset: 0; z-index: 1000; display: none;
+    align-items: center; justify-content: center; padding: 24px;
+    background: linear-gradient(160deg, #eef5fc 0%, #f8fbff 48%, #e5eef8 100%);
+  }
+  .auth-gate.visible { display: flex; }
+  .auth-card {
+    width: min(100%, 390px); background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; padding: 28px 22px; text-align: center;
+    box-shadow: 0 20px 55px rgba(35,75,120,.15);
+  }
+  .auth-logo { width: 58px; height: 58px; margin: 0 auto 16px; border-radius: 15px; font-size: 24px; }
+  .auth-title { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
+  .auth-title span { color: var(--accent); }
+  .auth-copy { margin: 10px auto 20px; max-width: 300px; color: var(--text2); font-size: 14px; line-height: 1.5; }
+  .auth-button {
+    width: 100%; min-height: 46px; border: 1px solid #c9d7e5; border-radius: 10px;
+    background: #fff; color: var(--text); font-size: 14px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 2px 7px rgba(35,75,120,.08);
+  }
+  .auth-button:disabled { opacity: .65; cursor: wait; }
+  .auth-error { min-height: 18px; margin-top: 12px; color: var(--red); font-size: 12px; }
+
+  @media (min-width: 700px) {
+    .stats-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .filter-tabs { top: 94px; }
+    .stat-chip { border-bottom: none; }
+    .stat-chip:nth-child(2) { border-right: 1px solid var(--border); }
+  }
+
+  @media (max-width: 370px) {
+    .detail-header { padding-left: 10px; padding-right: 10px; gap: 8px; }
+    .detail-action { padding-left: 7px; padding-right: 7px; }
+    .dek-row { padding-left: 10px; padding-right: 10px; grid-template-columns: minmax(0, 1fr) minmax(118px, 44%); gap: 7px; }
+  }
+
+  /* Mobil yazdırma sayfası yeni sekmede açılır; ana uygulama her zaman salt okunurdur. */
+
+  /* SPINNER */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">
+    <div class="logo-mark">C</div>
+    <div class="logo-text">Cari<span>Pro</span></div>
+  </div>
+  <button class="sync-btn" id="syncBtn" onclick="loadData()">
+    <span id="syncIcon">↻</span> Yenile
+  </button>
+</div>
+
+<div class="auth-gate visible" id="authGate" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+  <div class="auth-card">
+    <div class="logo-mark auth-logo">C</div>
+    <div class="auth-title" id="authTitle">Cari<span>Pro</span></div>
+    <div class="auth-copy">Cari verileri özeldir. Devam etmek için yetkili Google hesabınızla giriş yapın.</div>
+    <button class="auth-button" id="authButton" onclick="cariproSignIn()">Google ile giriş yap</button>
+    <div class="auth-error" id="authError"></div>
+  </div>
+</div>
+
+<!-- CARİ LİSTESİ -->
+<div class="view active" id="viewList">
+  <div class="search-bar">
+    <input class="search-input" id="searchInput" placeholder="🔍 Cari ara..." oninput="filterCari(this.value)">
+  </div>
+  <div id="cariList"></div>
+</div>
+
+<!-- DEKont LİSTESİ -->
+<div class="view" id="viewDetail">
+  <div class="detail-header">
+    <button class="back-btn" onclick="goBack()">‹ Geri</button>
+    <div class="detail-title" id="detailTitle">—</div>
+    <div class="detail-actions">
+      <button class="detail-action" id="historyBtn" onclick="toggleAllDeks()" title="Eski dekontları da göster">Tüm kayıtlar</button>
+      <button class="detail-action accent" onclick="openPrintView()" title="Ekstreyi yazdır veya PDF kaydet">PDF</button>
+    </div>
+  </div>
+  <div class="stats-strip" id="statsStrip"></div>
+  <div class="filter-tabs" id="filterTabs"></div>
+  <div class="dek-search-wrap">
+    <input class="dek-search" id="dekSearch" placeholder="Açıklama, dekont no ara..." oninput="filterDekont(this.value)">
+  </div>
+  <div id="dekontList"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
+import {
+  getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence,
+  onAuthStateChanged, signInWithPopup,
+  signOut, getIdToken
+} from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyAG0RIroY5bfzAGBh6JhdUYzoMOVM8EANw',
+  authDomain: 'caripro-mobile.firebaseapp.com',
+  databaseURL: 'https://caripro-mobile-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'caripro-mobile',
+  storageBucket: 'caripro-mobile.firebasestorage.app',
+  messagingSenderId: '227711170586',
+  appId: '1:227711170586:web:8e57591799025f12f3b9a3',
+  measurementId: 'G-TYXHS2NQM1'
+};
+
+const ALLOWED_EMAIL = 'caripromuhasebe@gmail.com';
+const firebaseApp = initializeApp(firebaseConfig);
+const firebaseAuth = getAuth(firebaseApp);
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ login_hint: ALLOWED_EMAIL });
+
+let resolveAuthReady;
+window.cariproFirebaseReady = new Promise(resolve => { resolveAuthReady = resolve; });
+window.cariproDatabaseUrl = firebaseConfig.databaseURL;
+window.cariproGetIdToken = async () => {
+  if (!firebaseAuth.currentUser) throw new Error('Oturum açılmadı');
+  return getIdToken(firebaseAuth.currentUser);
+};
+
+function setAuthMessage(message = '') {
+  const el = document.getElementById('authError');
+  if (el) el.textContent = message;
+}
+
+window.cariproSignIn = async () => {
+  const button = document.getElementById('authButton');
+  if (button) button.disabled = true;
+  setAuthMessage('');
+  try {
+    await signInWithPopup(firebaseAuth, googleProvider);
+  } catch (error) {
+    console.warn('popup auth', error);
+    if (error?.code !== 'auth/popup-closed-by-user' && error?.code !== 'auth/cancelled-popup-request') {
+      setAuthMessage('Google girişi açılamadı. Lütfen tekrar deneyin.');
+    }
+  } finally {
+    if (button) button.disabled = false;
+  }
+};
+
+await setPersistence(firebaseAuth, browserLocalPersistence);
+resolveAuthReady();
+
+onAuthStateChanged(firebaseAuth, async user => {
+  const allowed = Boolean(user && user.emailVerified && user.email?.toLowerCase() === ALLOWED_EMAIL);
+  if (user && !allowed) {
+    await signOut(firebaseAuth);
+    setAuthMessage('Bu Google hesabının CariPro verilerine erişim yetkisi yok.');
+  }
+  document.getElementById('authGate')?.classList.toggle('visible', !allowed);
+  if (allowed && !window.__cariproDataLoaded) {
+    window.__cariproDataLoaded = true;
+    window.loadData();
+  }
+});
+</script>
+
+<script>
+const CACHE_KEY = 'caripro_data';
+
+let db = { cariler: [], dekontlar: [] };
+let meta = { firma_adi: '' };
+let cariIndex = {};
+let aktivCari = null;
+let dekFilter = 'hepsi';
+let dekSearch = '';
+let showAll = false;
+let loadedCariId = null; // hangi carinin dekontları yüklü
+
+const BASE = location.hostname.includes('github.io') ? '/caripro-pwa' : '';
+
+async function fetchJSON(url) {
+  await window.cariproFirebaseReady;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const token = await window.cariproGetIdToken();
+    const endpoint = window.cariproDatabaseUrl + url + '.json?auth=' + encodeURIComponent(token);
+    const r = await fetch(endpoint, { cache: 'no-store', signal: controller.signal });
+    clearTimeout(timeout);
+    if (r.ok) return await r.json();
+  } catch(e) { clearTimeout(timeout); console.warn('fetch fail', url, e.message); }
+  return null;
+}
+
+// ─── UTILS ───
+function fmt(n) {
+  return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0) + ' TL';
+}
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+function safeId(value) {
+  return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '');
+}
+function trNorm(s) {
+  return String(s||'').replace(/İ/g,'i').replace(/I/g,'i').replace(/Ğ/g,'g').replace(/Ü/g,'u').replace(/Ş/g,'s').replace(/Ö/g,'o').replace(/Ç/g,'c').toLowerCase();
+}
+function tarihFmt(t) {
+  if (!t) return '';
+  const p = t.split('-');
+  return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : t;
+}
+
+function dekontSira(a, b) {
+  const td = new Date(a.tarih || 0) - new Date(b.tarih || 0);
+  if (td !== 0) return td;
+
+  const st = (a.saat || '').localeCompare(b.saat || '');
+  if (st !== 0) return st;
+
+  const an = parseInt((a.no || '').replace(/\D/g, ''), 10) || 0;
+  const bn = parseInt((b.no || '').replace(/\D/g, ''), 10) || 0;
+  return an - bn;
+}
+
+// ─── DATA LOAD ───
+async function loadData() {
+  const btn = document.getElementById('syncBtn');
+  const icon = document.getElementById('syncIcon');
+  btn.className = 'sync-btn loading';
+  icon.innerHTML = '<span class="spinner"></span>';
+  document.getElementById('cariList').innerHTML = `
+    <div class="empty">
+      <div class="empty-icon"><span class="spinner" style="width:32px;height:32px;border-width:3px"></span></div>
+      <div class="empty-text" style="margin-top:16px">Cariler yükleniyor...</div>
+    </div>`;
+
+  const [cariler, loadedMeta] = await Promise.all([
+    fetchJSON('/cariler'),
+    fetchJSON('/meta')
+  ]);
+  if (!cariler) {
+    btn.className = 'sync-btn error';
+    icon.textContent = '✕';
+    document.getElementById('cariList').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">📡</div>
+        <div class="empty-text">Veri yüklenemedi</div>
+        <div class="empty-sub">Yenile butonuna basın</div>
+      </div>`;
+    return;
+  }
+
+  db.cariler = cariler;
+  meta = loadedMeta || meta;
+  localStorage.setItem(CACHE_KEY + '_time', new Date().toISOString());
+  btn.className = 'sync-btn';
+  icon.textContent = '↻';
+  renderCariList();
+}
+
+// ─── INDEX ───
+function buildDekontIndex(cariId, dekontlar) {
+  cariIndex[cariId] = { dekontlar: dekontlar };
+}
+
+// ─── CARİ LIST ───
+function cariStats(c) {
+  // Bakiye cariler.json'dan geliyor
+  return { bakiye: c.bakiye || 0, sayi: c.sayi || 0 };
+}
+
+function renderCariList(filter = '') {
+  const list = document.getElementById('cariList');
+  if (!db) return;
+  const q = trNorm(filter);
+  let cariler = (db.cariler||[]).filter(c =>
+    trNorm(c.ad).includes(q) || trNorm(c.kod||'').includes(q)
+  ).sort((a, b) => {
+    const an = parseInt((a.kod||'').replace(/\D/g,''))||0;
+    const bn = parseInt((b.kod||'').replace(/\D/g,''))||0;
+    return an - bn;
+  });
+
+  if (!cariler.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Sonuç bulunamadı</div></div>`;
+    return;
+  }
+
+  const cacheTime = localStorage.getItem(CACHE_KEY + '_time');
+  const timeStr = cacheTime ? new Date(cacheTime).toLocaleString('tr-TR') : '—';
+
+  list.innerHTML = cariler.map(c => {
+    const s = cariStats(c);
+    const bakCls = s.bakiye > 0 ? 'borc' : s.bakiye < 0 ? 'alacak' : 'sifir';
+    const bakTxt = s.bakiye === 0 ? 'Sıfır' : fmt(Math.abs(s.bakiye));
+    return `<div class="cari-item" onclick="openCari('${safeId(c.id)}')">
+      <div class="cari-left">
+        <div class="cari-name">${escapeHTML(c.ad)}</div>
+        <div class="cari-kod">${escapeHTML(c.kod||'')}</div>
+      </div>
+      <div class="cari-balance ${bakCls}">${bakTxt}</div>
+      <div class="chevron">›</div>
+    </div>`;
+  }).join('') + `<div class="son-guncelleme">Son güncelleme: ${timeStr}</div>`;
+}
+
+function filterCari(val) { renderCariList(val); }
+
+// ─── CARİ DETAIL ───
+async function openCari(id) {
+  aktivCari = (db.cariler||[]).find(c => c.id === id);
+  if (!aktivCari) return;
+  dekFilter = 'hepsi';
+  dekSearch = '';
+  showAll = false;
+  document.getElementById('detailTitle').textContent = aktivCari.ad;
+  document.getElementById('viewList').classList.remove('active');
+  document.getElementById('viewDetail').classList.add('active');
+  document.getElementById('viewDetail').scrollTop = 0;
+  document.getElementById('dekSearch').value = '';
+  updateHistoryButton();
+
+  // Stats şimdilik cariler.json'daki verilerle
+  renderStatsSimple();
+  renderFilterTabs();
+
+  // Dekontlar yüklü mü?
+  if (!cariIndex[id]) {
+    document.getElementById('dekontList').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon"><span class="spinner" style="width:24px;height:24px;border-width:2px"></span></div>
+        <div class="empty-text" style="margin-top:12px">Dekontlar yükleniyor...</div>
+      </div>`;
+    const deks = await fetchJSON(`/dekontlar/${id}`);
+    if (deks) {
+      buildDekontIndex(id, deks);
+    } else {
+      document.getElementById('dekontList').innerHTML = `
+        <div class="empty"><div class="empty-icon">⚠</div><div class="empty-text">Dekontlar yüklenemedi</div></div>`;
+      return;
+    }
+  }
+
+  renderStats();
+  renderDekontlar();
+}
+
+function goBack() {
+  document.getElementById('viewDetail').classList.remove('active');
+  document.getElementById('viewList').classList.add('active');
+}
+
+function renderStatsSimple() {
+  const bakiye = aktivCari.bakiye || 0;
+  const bakCls = bakiye > 0 ? 'borc' : bakiye < 0 ? 'alacak' : '';
+  const bakTxt = bakiye === 0 ? 'Sıfır' : (bakiye > 0 ? '' : '−') + fmt(Math.abs(bakiye));
+  document.getElementById('statsStrip').innerHTML = `
+    <div class="stat-chip">
+      <div class="stat-chip-label">Bakiye</div>
+      <div class="stat-chip-val ${bakCls}">${bakTxt}</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">İşlem</div>
+      <div class="stat-chip-val">${aktivCari.sayi || 0}</div>
+    </div>`;
+}
+
+function renderStats() {
+  const deks = cariIndex[aktivCari.id]?.dekontlar || [];
+  let toplamBorc = 0, toplamAlacak = 0;
+  deks.forEach(d => {
+    const tutar = Number(d.tutar) || 0;
+    if (d.tur === 'borc' || d.tur === 'odeme') toplamBorc += tutar;
+    else if (d.tur === 'tahsilat' || d.tur === 'alacak') toplamAlacak += tutar;
+  });
+  const bakiye = toplamBorc - toplamAlacak;
+  const bakCls = bakiye > 0 ? 'borc' : bakiye < 0 ? 'alacak' : '';
+  const bakTxt = bakiye === 0 ? 'Sıfır' : (bakiye > 0 ? '' : '−') + fmt(Math.abs(bakiye));
+  document.getElementById('statsStrip').innerHTML = `
+    <div class="stat-chip">
+      <div class="stat-chip-label">Borç</div>
+      <div class="stat-chip-val borc">${fmt(toplamBorc)}</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">Alacak</div>
+      <div class="stat-chip-val alacak">${fmt(toplamAlacak)}</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">Bakiye</div>
+      <div class="stat-chip-val ${bakCls}">${bakTxt}</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-chip-label">İşlem</div>
+      <div class="stat-chip-val">${deks.length}</div>
+    </div>`;
+}
+
+function renderFilterTabs() {
+  const tabs = [
+    { key: 'hepsi', label: 'Tümü' },
+    { key: 'borc', label: 'Borç' },
+    { key: 'tahsilat', label: 'Tahsilat' },
+    { key: 'alacak', label: 'Alacak' },
+    { key: 'odeme', label: 'Ödeme' },
+  ];
+  document.getElementById('filterTabs').innerHTML = tabs.map(t =>
+    `<div class="ftab ${dekFilter === t.key ? 'active' : ''}" onclick="setFilter('${t.key}')">${t.label}</div>`
+  ).join('');
+}
+
+function setFilter(f) { dekFilter = f; renderFilterTabs(); renderDekontlar(); }
+function filterDekont(v) { dekSearch = v; renderDekontlar(); }
+
+function updateHistoryButton() {
+  const btn = document.getElementById('historyBtn');
+  if (!btn) return;
+  btn.textContent = showAll ? 'Son 6 ay' : 'Tüm kayıtlar';
+  btn.classList.toggle('accent', showAll);
+}
+
+function toggleAllDeks() {
+  showAll = !showAll;
+  updateHistoryButton();
+  renderDekontlar();
+}
+
+function renderDekontlar() {
+  const list = document.getElementById('dekontList');
+  let deks = (cariIndex[aktivCari.id]?.dekontlar || []).slice();
+
+  // 6 ay limiti
+  const altıAyOnce = new Date();
+  altıAyOnce.setMonth(altıAyOnce.getMonth() - 6);
+  const limitStr = altıAyOnce.toISOString().split('T')[0];
+  const tumSayi = deks.length;
+  let gizli = 0;
+  if (!showAll && !dekSearch && tumSayi > 200) {
+    const eskiler = deks.filter(d => d.tarih < limitStr);
+    gizli = eskiler.length;
+    deks = deks.filter(d => d.tarih >= limitStr);
+  }
+
+  if (dekFilter !== 'hepsi') deks = deks.filter(d => d.tur === dekFilter);
+
+  if (dekSearch.trim()) {
+    const q = trNorm(dekSearch.trim());
+    deks = deks.filter(d =>
+      trNorm(d.aciklama).includes(q) ||
+      trNorm(d.no||'').includes(q) ||
+      String(d.tutar).includes(dekSearch.trim())
+    );
+  }
+
+  deks.sort(dekontSira);
+
+  // Kümülatif bakiye — index'teki sıralı listeden
+  let allDeks = (cariIndex[aktivCari.id]?.dekontlar || [])
+    .slice().sort(dekontSira);
+  let balMap = {}, run = 0;
+  allDeks.forEach(d => {
+    const tutar = Number(d.tutar) || 0;
+    if (d.tur==='borc') run+=tutar;
+    else if (d.tur==='tahsilat') run-=tutar;
+    else if (d.tur==='alacak') run-=tutar;
+    else if (d.tur==='odeme') run+=tutar;
+    balMap[d.id] = run;
+  });
+
+  const turLabel = { borc:'Borç', tahsilat:'Tahsilat', alacak:'Alacak', odeme:'Ödeme' };
+  const tutarSign = { borc:'', tahsilat:'−', alacak:'', odeme:'−' };
+
+  if (!deks.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">İşlem bulunamadı</div></div>`;
+    return;
+  }
+
+  const showMoreBtn = gizli > 0 && !showAll ? `
+    <button class="show-more-btn" onclick="showAllDeks()">⏫ ${gizli} eski kayıt — Tümünü Göster</button>` : '';
+
+  list.innerHTML = showMoreBtn + deks.map(d => {
+    const bal = balMap[d.id];
+    const balTxt = bal === 0 ? '0,00 TL' : (bal > 0 ? '+' : '−') + fmt(Math.abs(bal));
+    return `<div class="dek-row">
+      <div>
+        <div class="dek-no">${escapeHTML(d.no||'—')}</div>
+        <div class="dek-aciklama">${escapeHTML(d.aciklama||'—')}</div>
+        <div class="dek-tarih">${escapeHTML(tarihFmt(d.tarih))}${d.saat?' · '+escapeHTML(d.saat):''}</div>
+        <span class="dek-tur-badge ${safeId(d.tur)}">${escapeHTML(turLabel[d.tur]||d.tur)}</span>
+      </div>
+      <div class="dek-right">
+        <div class="dek-tutar ${d.tur}">${tutarSign[d.tur]||''}${fmt(d.tutar)}</div>
+        <div class="dek-bakiye">${balTxt}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // En alta scroll
+  setTimeout(() => {
+    const detail = document.getElementById('viewDetail');
+    detail.scrollTop = detail.scrollHeight;
+  }, 100);
+}
+
+function showAllDeks() {
+  showAll = true;
+  updateHistoryButton();
+  renderDekontlar();
+}
+
+// Mobil tarayıcının yerleşik yazdırma ekranı PDF olarak kaydetmeyi de destekler.
+function openPrintView() {
+  if (!aktivCari) return;
+  const deks = (cariIndex[aktivCari.id]?.dekontlar || []).slice().sort(dekontSira);
+  const today = new Date().toISOString().split('T')[0];
+  const ilk = deks.length ? deks[0].tarih : today;
+  const son = deks.length ? deks[deks.length - 1].tarih : today;
+  const payload = JSON.stringify({
+    cari: aktivCari,
+    firma: meta.firma_adi || '',
+    deks
+  }).replace(/</g, '\\u003c');
+
+  const html = `<!doctype html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CariPro Ekstre</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#e7ebed;color:#172023;font:13px -apple-system,"Segoe UI",Arial,sans-serif}.tools{position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #ccd4d7;padding:10px;display:flex;align-items:end;gap:8px;flex-wrap:wrap}.tools h1{font-size:15px;color:#0f766e;margin:0 auto 0 0}.tools label{font-size:10px;font-weight:700;color:#526067}.tools input{display:block;margin-top:3px;border:1px solid #bdc7cb;border-radius:6px;padding:7px;width:132px}.tools button{border:0;border-radius:7px;padding:9px 13px;background:#0f766e;color:#fff;font-weight:700}.count{font-size:11px;color:#526067}.wrap{padding:16px}.page{max-width:900px;margin:auto;background:#fff;padding:24px;box-shadow:0 3px 18px #0002}.head{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid #222;padding-bottom:12px;margin-bottom:14px}.head h2{font-size:20px;margin:0}.sub{color:#69767c;font-size:10px;margin-top:3px}.firm{text-align:right;font-weight:700}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid #ddd;margin-bottom:16px}.stat{padding:9px;border-right:1px solid #ddd}.stat:last-child{border:0}.lab{font-size:8px;color:#778187;text-transform:uppercase}.val{font-size:13px;font-weight:800;margin-top:3px}.red{color:#b42318}.green{color:#087443}table{width:100%;border-collapse:collapse}th{background:#f1f3f4;font-size:8px;text-transform:uppercase;text-align:left;padding:6px;border-bottom:2px solid #ccd1d3}td{font-size:10px;padding:6px;border-bottom:1px solid #e4e7e8;vertical-align:top}th.money,td.money{text-align:right;white-space:nowrap}.footer{margin-top:14px;padding-top:8px;border-top:1px solid #ddd;color:#879096;font-size:8px;display:flex;justify-content:space-between}.empty{text-align:center;padding:30px;color:#879096}@media(max-width:600px){.tools h1{width:100%}.tools label{flex:1}.tools input{width:100%}.tools button{width:100%}.wrap{padding:0}.page{box-shadow:none;padding:14px;min-width:680px}.wrap{overflow:auto}.stats{grid-template-columns:repeat(4,1fr)}}@media print{body{background:#fff}.tools{display:none}.wrap{padding:0}.page{box-shadow:none;max-width:none;padding:0;min-width:0}@page{size:A4 portrait;margin:10mm}}
+</style></head><body>
+<div class="tools"><h1>PDF / Yazdır Önizleme</h1><label>Başlangıç<input id="bas" type="date" value="${ilk}"></label><label>Bitiş<input id="bit" type="date" value="${son}"></label><span class="count" id="count"></span><button onclick="window.print()">PDF Oluştur / Yazdır</button></div>
+<div class="wrap"><main class="page" id="page"></main></div>
+<script>
+const veri=${payload};
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=v=>new Intl.NumberFormat('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v)||0)+' TL';
+const date=v=>{const p=String(v||'').split('-');return p.length===3?p[2]+'.'+p[1]+'.'+p[0]:v};
+const delta=d=>{const v=Number(d.tutar)||0;return d.tur==='borc'||d.tur==='odeme'?v:-v};
+function render(){
+  const bas=document.getElementById('bas').value,bit=document.getElementById('bit').value;
+  const rows=veri.deks.filter(d=>(!bas||d.tarih>=bas)&&(!bit||d.tarih<=bit));
+  let running=veri.deks.filter(d=>bas&&d.tarih<bas).reduce((s,d)=>s+delta(d),0);
+  let borc=0,alacak=0;
+  rows.forEach(d=>{const v=Number(d.tutar)||0;if(d.tur==='borc'||d.tur==='odeme')borc+=v;else if(d.tur==='tahsilat'||d.tur==='alacak')alacak+=v});
+  const body=rows.length?rows.map(d=>{running+=delta(d);const label={borc:'Borç',tahsilat:'Tahsilat',alacak:'Alacak',odeme:'Ödeme'}[d.tur]||d.tur;const cls=d.tur==='tahsilat'||d.tur==='alacak'?'green':'red';const sign=d.tur==='tahsilat'||d.tur==='odeme'?'−':'';const bal=(running>0?'+':running<0?'−':'')+money(Math.abs(running));return '<tr><td>'+esc(label)+'</td><td>'+esc(d.no||'')+'</td><td>'+esc(date(d.tarih))+'</td><td>'+esc(d.aciklama||'')+'</td><td class="money '+cls+'">'+sign+money(d.tutar)+'</td><td class="money">'+esc(bal)+'</td></tr>'}).join(''):'<tr><td colspan="6" class="empty">Bu tarih aralığında işlem yok</td></tr>';
+  const finalBalance=running;
+  document.getElementById('count').textContent=rows.length+' işlem';
+  document.getElementById('page').innerHTML='<div class="head"><div><h2>'+esc(veri.cari.ad)+'</h2><div class="sub">'+esc(veri.cari.kod||'')+' · '+esc(date(bas))+' — '+esc(date(bit))+'</div></div><div class="firm">'+esc(veri.firma||'')+'<div class="sub">CariPro Muhasebe<br>'+esc(new Date().toLocaleDateString('tr-TR'))+'</div></div></div><div class="stats"><div class="stat"><div class="lab">Dönem Borç</div><div class="val red">'+money(borc)+'</div></div><div class="stat"><div class="lab">Dönem Alacak</div><div class="val green">'+money(alacak)+'</div></div><div class="stat"><div class="lab">Dönem Sonu Bakiye</div><div class="val '+(finalBalance>=0?'red':'green')+'">'+money(Math.abs(finalBalance))+'</div></div><div class="stat"><div class="lab">İşlem Sayısı</div><div class="val">'+rows.length+'</div></div></div><table><thead><tr><th>Tür</th><th>Dekont No</th><th>Tarih</th><th>Açıklama</th><th class="money">Tutar</th><th class="money">Bakiye</th></tr></thead><tbody>'+body+'</tbody></table><div class="footer"><span>CariPro · '+esc(veri.cari.ad)+'</span><span>'+rows.length+' işlem</span></div>';
+}
+document.getElementById('bas').onchange=render;document.getElementById('bit').onchange=render;render();
+<\/script></body></html>`;
+
+  const blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  const popup = window.open(blobUrl, '_blank');
+  if (!popup) {
+    URL.revokeObjectURL(blobUrl);
+    alert('PDF önizlemesi açılamadı. Tarayıcıda açılır pencerelere izin verin.');
+    return;
+  }
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+}
+
+// ─── INIT ───
+window.addEventListener('load', () => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+});</script>
+</body>
+</html>
